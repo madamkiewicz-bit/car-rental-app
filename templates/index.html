@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>System rezerwacji aut</title>
+
+<style>
+
+body{
+    font-family: Arial, sans-serif;
+    background:#f3f4f6;
+    margin:0;
+    padding:20px;
+    color:#111827;
+}
+
+h1,h2,h3{
+    margin-top:0;
+}
+
+.top-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    margin-bottom:20px;
+}
+
+.today-box{
+    background:white;
+    padding:15px 20px;
+    border-radius:14px;
+    box-shadow:0 2px 8px rgba(0,0,0,0.08);
+    font-weight:bold;
+}
+
+.box{
+    background:white;
+    border-radius:18px;
+    padding:22px;
+    margin-bottom:18px;
+    box-shadow:0 2px 10px rgba(0,0,0,0.06);
+}
+
+.alert-box{
+    border:2px solid #f97316;
+    background:#fff7ed;
+}
+
+.message{
+    font-weight:bold;
+    margin-bottom:18px;
+    font-size:22px;
+}
+
+.form-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fit,minmax(240px,1fr));
+    gap:18px;
+}
+
+.form-field{
+    display:flex;
+    flex-direction:column;
+}
+
+label{
+    margin-bottom:8px;
+    font-weight:bold;
+}
+
+input,
+select,
+textarea{
+    padding:12px;
+    border-radius:10px;
+    border:1px solid #cbd5e1;
+    font-size:15px;
+}
+
+textarea{
+    min-height:90px;
+    resize:vertical;
+}
+
+button{
+    border:none;
+    border-radius:10px;
+    padding:11px 18px;
+    cursor:pointer;
+    font-weight:bold;
+    font-size:14px;
+}
+
+.btn-green{
+    background:#0f766e;
+    color:white;
+}
+
+.btn-blue{
+    background:#2563eb;
+    color:white;
+}
+
+.btn-orange{
+    background:#f59e0b;
+    color:black;
+}
+
+.btn-red{
+    background:#ef4444;
+    color:white;
+}
+
+.section-toggle{
+    cursor:pointer;
+    user-select:none;
+}
+
+.hidden{
+    display:none;
+}
+
+.calendar-wrapper{
+    overflow-x:auto;
+}
+
+.calendar-grid{
+    display:flex;
+    gap:6px;
+    min-width:max-content;
+}
+
+.day-box{
+    width:48px;
+    min-width:48px;
+    text-align:center;
+    border-radius:8px;
+    padding:8px 0;
+    background:#f8fafc;
+    border:1px solid #dbe2ea;
+    font-size:13px;
+    font-weight:bold;
+}
+
+.day-holiday{
+    background:#fee2e2;
+    color:#b91c1c;
+}
+
+.car-row{
+    display:flex;
+    align-items:center;
+    margin-top:14px;
+    gap:10px;
+}
+
+.car-name{
+    width:120px;
+    font-weight:bold;
+}
+
+.status-grid{
+    display:flex;
+    gap:6px;
+}
+
+.status-box{
+    width:48px;
+    height:36px;
+    border-radius:8px;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    font-weight:bold;
+    position:relative;
+}
+
+.free{
+    background:#bbf7d0;
+}
+
+.reserved{
+    background:#fca5a5;
+}
+
+.blocked{
+    background:#93c5fd;
+}
+
+.tooltip{
+    visibility:hidden;
+    opacity:0;
+    transition:0.2s;
+    position:absolute;
+    bottom:45px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#111827;
+    color:white;
+    padding:10px;
+    border-radius:10px;
+    width:220px;
+    z-index:10;
+    font-size:13px;
+    text-align:left;
+}
+
+.status-box:hover .tooltip{
+    visibility:visible;
+    opacity:1;
+}
+
+.legend{
+    display:flex;
+    gap:20px;
+    margin-top:18px;
+    flex-wrap:wrap;
+}
+
+.legend-item{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    font-weight:bold;
+}
+
+.legend-color{
+    width:28px;
+    height:22px;
+    border-radius:5px;
+}
+
+.table-wrapper{
+    overflow-x:auto;
+}
+
+table{
+    width:100%;
+    border-collapse:collapse;
+    min-width:900px;
+}
+
+th{
+    background:#e5e7eb;
+}
+
+th,td{
+    padding:12px;
+    border:1px solid #d1d5db;
+    text-align:center;
+}
+
+.note-preview{
+    background:#fff7ed;
+    border:1px solid #fdba74;
+    padding:8px 12px;
+    border-radius:10px;
+    display:inline-block;
+}
+
+details{
+    cursor:pointer;
+}
+
+summary{
+    font-weight:bold;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="top-bar">
+    <h1>🚗 System rezerwacji samochodów</h1>
+
+    <div class="today-box">
+        📅 Dzisiaj: {{ today.strftime('%d.%m.%Y') }}
+    </div>
+</div>
+
+{% if message %}
+<div class="message">
+    {{ message }}
+</div>
+{% endif %}
+
+{% set alerts = namespace(has_alert=false) %}
+
+{% for car in cars %}
+    {% if car.inspection_status.status != "ok" or car.insurance_status.status != "ok" %}
+        {% set alerts.has_alert = true %}
+    {% endif %}
+{% endfor %}
+
+{% if alerts.has_alert %}
+<div class="box alert-box">
+
+    <h2>⚠️ Alerty samochodów</h2>
+
+    {% for car in cars %}
+
+        {% if car.inspection_status.status != "ok" or car.insurance_status.status != "ok" %}
+
+            <div style="margin-bottom:18px;">
+
+                <strong>
+                    🚗 {{ car.model }} — {{ car.plate }}
+                </strong>
+
+                <div style="margin-top:6px;">
+
+                    {% if car.inspection_status.status != "ok" %}
+                        <div>
+                            ⚠️ {{ car.inspection_status.message }}
+                        </div>
+                    {% endif %}
+
+                    {% if car.insurance_status.status != "ok" %}
+                        <div>
+                            ⚠️ {{ car.insurance_status.message }}
+                        </div>
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+        {% endif %}
+
+    {% endfor %}
+
+</div>
+{% endif %}
+
+<div class="box">
+
+<h2 class="section-toggle" onclick="toggleSection('cars-admin')">
+🚘 Zarządzaj samochodami
+</h2>
+
+<div id="cars-admin" class="hidden">
+
+{% if edit_car %}
+
+<div class="box" style="border:2px solid orange;">
+
+<h2>✏️ Edytuj samochód</h2>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="update_car">
+<input type="hidden" name="car_id" value="{{ edit_car.id }}">
+
+<div class="form-grid">
+
+<div class="form-field">
+<label>Marka i model</label>
+<input type="text" name="car_model" value="{{ edit_car.model }}">
+</div>
+
+<div class="form-field">
+<label>Nr rejestracyjny</label>
+<input type="text" name="car_plate" value="{{ edit_car.plate }}">
+</div>
+
+<div class="form-field">
+<label>Przegląd techniczny</label>
+<input type="date" name="inspection_date" value="{{ edit_car.inspection_date }}">
+</div>
+
+<div class="form-field">
+<label>Ubezpieczenie OC</label>
+<input type="date" name="insurance_date" value="{{ edit_car.insurance_date }}">
+</div>
+
+</div>
+
+<br>
+
+<button class="btn-orange">
+Zapisz samochód
+</button>
+
+</form>
+
+</div>
+
+{% endif %}
+
+<h3>➕ Dodaj samochód</h3>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="add_car">
+
+<div class="form-grid">
+
+<div class="form-field">
+<label>Marka i model</label>
+<input type="text" name="car_model">
+</div>
+
+<div class="form-field">
+<label>Nr rejestracyjny</label>
+<input type="text" name="car_plate">
+</div>
+
+<div class="form-field">
+<label>Przegląd techniczny</label>
+<input type="date" name="inspection_date">
+</div>
+
+<div class="form-field">
+<label>Ubezpieczenie OC</label>
+<input type="date" name="insurance_date">
+</div>
+
+</div>
+
+<br>
+
+<button class="btn-blue">
+Dodaj samochód
+</button>
+
+</form>
+
+<hr style="margin:30px 0;">
+
+<h3>📋 Lista samochodów</h3>
+
+<table>
+
+<tr>
+<th>Samochód</th>
+<th>Nr rej.</th>
+<th>Przegląd</th>
+<th>OC</th>
+<th>Akcje</th>
+</tr>
+
+{% for car in cars %}
+
+<tr>
+
+<td>{{ car.model }}</td>
+<td>{{ car.plate }}</td>
+
+<td>
+{{ car.inspection_date if car.inspection_date else "brak" }}
+</td>
+
+<td>
+{{ car.insurance_date if car.insurance_date else "brak" }}
+</td>
+
+<td>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="edit_car">
+<input type="hidden" name="car_id" value="{{ car.id }}">
+
+<button class="btn-orange">
+Edytuj
+</button>
+
+</form>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+</div>
+
+<div class="box">
+
+<h2>🗓️ Dodaj rezerwację</h2>
+
+{% if edit_reservation %}
+
+<div class="box" style="border:2px solid orange;">
+
+<h2>
+✏️ Edytujesz:
+{{ edit_reservation.model }} — {{ edit_reservation.plate }}
+</h2>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="update_reservation">
+<input type="hidden" name="reservation_id" value="{{ edit_reservation.id }}">
+<input type="hidden" name="car_id" value="{{ edit_reservation.car_id }}">
+
+<div class="form-grid">
+
+<div class="form-field">
+<label>Klient</label>
+<input type="text" name="client" value="{{ edit_reservation.client }}">
+</div>
+
+<div class="form-field">
+<label>Telefon</label>
+<input type="text" name="phone" value="{{ edit_reservation.phone }}">
+</div>
+
+<div class="form-field">
+<label>Stawka za dzień</label>
+<input type="number" step="0.01" name="daily_rate" value="{{ edit_reservation.daily_rate }}">
+</div>
+
+<div class="form-field">
+<label>Data od</label>
+<input type="date" name="date_from" value="{{ edit_reservation.date_from }}">
+</div>
+
+<div class="form-field">
+<label>Data do</label>
+<input type="date" name="date_to" value="{{ edit_reservation.date_to }}">
+</div>
+
+</div>
+
+<br>
+
+<div class="form-field">
+<label>Notatki</label>
+<textarea name="notes">{{ edit_reservation.notes }}</textarea>
+</div>
+
+<br>
+
+<button class="btn-orange">
+Zapisz zmiany
+</button>
+
+</form>
+
+</div>
+{% endif %}
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="add_reservation">
+
+<div class="form-grid">
+
+<div class="form-field">
+<label>Samochód</label>
+
+<select name="car_id">
+
+<option value="">
+-- wybierz auto --
+</option>
+
+{% for car in cars %}
+<option value="{{ car.id }}">
+{{ car.model }} — {{ car.plate }}
+</option>
+{% endfor %}
+
+</select>
+</div>
+
+<div class="form-field">
+<label>Klient</label>
+<input type="text" name="client">
+</div>
+
+<div class="form-field">
+<label>Telefon</label>
+<input type="text" name="phone" placeholder="+48 555 666 777">
+</div>
+
+<div class="form-field">
+<label>Stawka za dzień</label>
+<input type="number" step="0.01" name="daily_rate">
+</div>
+
+<div class="form-field">
+<label>Data od</label>
+<input type="date" name="date_from">
+</div>
+
+<div class="form-field">
+<label>Data do</label>
+<input type="date" name="date_to">
+</div>
+
+</div>
+
+<br>
+
+<div class="form-field">
+<label>Notatki</label>
+
+<textarea name="notes" placeholder="np. adres podstawienia auta, godzina odbioru, kaucja, uwagi"></textarea>
+</div>
+
+<br>
+
+<button class="btn-green">
+Dodaj rezerwację
+</button>
+
+</form>
+
+</div>
+
+<div class="box">
+
+<h2>📆 Grafik rezerwacji — najbliższe 21 dni</h2>
+
+<div class="calendar-wrapper">
+
+<div class="calendar-grid">
+
+<div style="width:120px;"></div>
+
+{% for day in calendar_days %}
+
+<div class="day-box {% if day.is_sunday or day.is_holiday %}day-holiday{% endif %}">
+
+<div>
+{{ day.day_name }}
+</div>
+
+<div>
+{{ day.day_number }}.{{ day.month }}
+</div>
+
+</div>
+
+{% endfor %}
+
+</div>
+
+{% for row in schedule %}
+
+<div class="car-row">
+
+<div class="car-name">
+{{ row.car.model }}<br>
+{{ row.car.plate }}
+</div>
+
+<div class="status-grid">
+
+{% for day in row.days %}
+
+{% if day.blocked %}
+
+<div class="status-box blocked">
+
+⚙️
+
+<div class="tooltip">
+<strong>{{ day.block_reason }}</strong><br><br>
+{{ day.block_notes }}
+</div>
+
+</div>
+
+{% elif day.reserved %}
+
+<div class="status-box reserved">
+
+✔
+
+<div class="tooltip">
+
+<strong>{{ day.client }}</strong>
+
+{% if day.phone %}
+<br><br>
+📞 {{ day.phone }}
+{% endif %}
+
+</div>
+
+</div>
+
+{% else %}
+
+<div class="status-box free">
+—
+</div>
+
+{% endif %}
+
+{% endfor %}
+
+</div>
+
+</div>
+
+{% endfor %}
+
+<div class="legend">
+
+<div class="legend-item">
+<div class="legend-color free"></div>
+wolne
+</div>
+
+<div class="legend-item">
+<div class="legend-color reserved"></div>
+rezerwacja
+</div>
+
+<div class="legend-item">
+<div class="legend-color blocked"></div>
+blokada
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="box">
+
+<h2 class="section-toggle" onclick="toggleSection('blocks')">
+🔧 Blokady aut
+</h2>
+
+<div id="blocks" class="hidden">
+
+{% if edit_block %}
+
+<div class="box" style="border:2px solid orange;">
+
+<h2>
+✏️ Edytujesz blokadę:
+{{ edit_block.model }} — {{ edit_block.plate }}
+</h2>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="update_block">
+<input type="hidden" name="block_id" value="{{ edit_block.id }}">
+<input type="hidden" name="block_car_id" value="{{ edit_block.car_id }}">
+
+<div class="form-grid">
+
+<div class="form-field">
+<label>Powód</label>
+
+<select name="block_reason">
+
+<option value="Serwis" {% if edit_block.reason == "Serwis" %}selected{% endif %}>
+Serwis
+</option>
+
+<option value="Myjnia" {% if edit_block.reason == "Myjnia" %}selected{% endif %}>
+Myjnia
+</option>
+
+<option value="Naprawa" {% if edit_block.reason == "Naprawa" %}selected{% endif %}>
+Naprawa
+</option>
+
+<option value="Niedostępne" {% if edit_block.reason == "Niedostępne" %}selected{% endif %}>
+Niedostępne
+</option>
+
+</select>
+</div>
+
+<div class="form-field">
+<label>Data od</label>
+<input type="date" name="block_date_from" value="{{ edit_block.date_from }}">
+</div>
+
+<div class="form-field">
+<label>Data do</label>
+<input type="date" name="block_date_to" value="{{ edit_block.date_to }}">
+</div>
+
+</div>
+
+<br>
+
+<div class="form-field">
+<label>Notatki</label>
+<textarea name="block_notes">{{ edit_block.notes }}</textarea>
+</div>
+
+<br>
+
+<button class="btn-orange">
+Zapisz blokadę
+</button>
+
+</form>
+
+</div>
+
+{% endif %}
+
+<h3>➕ Dodaj blokadę auta</h3>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="add_block">
+
+<div class="form-grid">
+
+<div class="form-field">
+
+<label>Samochód</label>
+
+<select name="block_car_id">
+
+<option value="">
+-- wybierz auto --
+</option>
+
+{% for car in cars %}
+<option value="{{ car.id }}">
+{{ car.model }} — {{ car.plate }}
+</option>
+{% endfor %}
+
+</select>
+
+</div>
+
+<div class="form-field">
+
+<label>Powód blokady</label>
+
+<select name="block_reason">
+
+<option value="Serwis">
+Serwis
+</option>
+
+<option value="Myjnia">
+Myjnia
+</option>
+
+<option value="Naprawa">
+Naprawa
+</option>
+
+<option value="Niedostępne">
+Niedostępne
+</option>
+
+</select>
+
+</div>
+
+<div class="form-field">
+<label>Data od</label>
+<input type="date" name="block_date_from">
+</div>
+
+<div class="form-field">
+<label>Data do</label>
+<input type="date" name="block_date_to">
+</div>
+
+</div>
+
+<br>
+
+<div class="form-field">
+
+<label>Notatki</label>
+
+<textarea name="block_notes"></textarea>
+
+</div>
+
+<br>
+
+<button class="btn-green">
+Dodaj blokadę
+</button>
+
+</form>
+
+<hr style="margin:30px 0;">
+
+<h3>📋 Lista blokad aut</h3>
+
+<div class="table-wrapper">
+
+<table>
+
+<tr>
+<th>Samochód</th>
+<th>Nr rej.</th>
+<th>Powód</th>
+<th>Od</th>
+<th>Do</th>
+<th>Notatki</th>
+<th>Akcje</th>
+</tr>
+
+{% for block in blocks %}
+
+<tr>
+
+<td>{{ block.model }}</td>
+<td>{{ block.plate }}</td>
+<td>{{ block.reason }}</td>
+<td>{{ block.date_from }}</td>
+<td>{{ block.date_to }}</td>
+
+<td>
+
+{% if block.notes %}
+
+<details>
+<summary>📝 Pokaż</summary>
+
+<div class="note-preview" style="margin-top:10px;">
+{{ block.notes }}
+</div>
+
+</details>
+
+{% else %}
+brak
+{% endif %}
+
+</td>
+
+<td>
+
+<div style="display:flex; gap:8px; justify-content:center;">
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="edit_block">
+<input type="hidden" name="block_id" value="{{ block.id }}">
+
+<button class="btn-orange">
+Edytuj
+</button>
+
+</form>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="delete_block">
+<input type="hidden" name="block_id" value="{{ block.id }}">
+
+<button class="btn-red">
+Usuń
+</button>
+
+</form>
+
+</div>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<div class="box">
+
+<h2 class="section-toggle" onclick="toggleSection('reservations-table')">
+📋 Lista wszystkich rezerwacji
+</h2>
+
+<div id="reservations-table">
+
+<div class="table-wrapper">
+
+<table>
+
+<tr>
+<th>Samochód</th>
+<th>Nr rej.</th>
+<th>Klient</th>
+<th>Telefon</th>
+<th>Od</th>
+<th>Do</th>
+<th>Dni</th>
+<th>Stawka / dzień</th>
+<th>Suma</th>
+<th>Notatki</th>
+<th>Akcje</th>
+</tr>
+
+{% for reservation in reservations %}
+
+<tr>
+
+<td>{{ reservation.model }}</td>
+<td>{{ reservation.plate }}</td>
+
+<td>
+👤 {{ reservation.client }}
+</td>
+
+<td>
+
+{% if reservation.phone %}
+📞 {{ reservation.phone }}
+{% else %}
+brak numeru
+{% endif %}
+
+</td>
+
+<td>{{ reservation.date_from }}</td>
+<td>{{ reservation.date_to }}</td>
+
+<td>
+<strong>{{ reservation.days_count }}</strong>
+</td>
+
+<td>
+{{ "%.2f"|format(reservation.daily_rate) }} zł
+</td>
+
+<td>
+<strong>
+{{ "%.2f"|format(reservation.total_price) }} zł
+</strong>
+</td>
+
+<td>
+
+{% if reservation.notes %}
+
+<details>
+<summary>📝 Pokaż</summary>
+
+<div class="note-preview" style="margin-top:10px;">
+{{ reservation.notes }}
+</div>
+
+</details>
+
+{% else %}
+<span style="color:#9ca3af;">
+brak
+</span>
+{% endif %}
+
+</td>
+
+<td>
+
+<div style="display:flex; gap:8px; justify-content:center;">
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="edit_reservation">
+<input type="hidden" name="reservation_id" value="{{ reservation.id }}">
+
+<button class="btn-orange">
+Edytuj
+</button>
+
+</form>
+
+<form method="POST">
+
+<input type="hidden" name="form_type" value="delete_reservation">
+<input type="hidden" name="reservation_id" value="{{ reservation.id }}">
+
+<button class="btn-red">
+Usuń
+</button>
+
+</form>
+
+</div>
+
+</td>
+
+</tr>
+
+{% endfor %}
+
+</table>
+
+</div>
+
+</div>
+
+</div>
+
+<script>
+
+function toggleSection(id){
+
+    const element = document.getElementById(id);
+
+    if(element.classList.contains("hidden")){
+        element.classList.remove("hidden");
+    }else{
+        element.classList.add("hidden");
+    }
+}
+
+</script>
+
+</body>
+</html>
