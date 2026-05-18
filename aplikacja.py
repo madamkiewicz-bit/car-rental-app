@@ -4,9 +4,10 @@ import sqlite3
 # render test
 app = Flask(__name__)
 
-@app.route("/")
-def test():
-    return "DZIALA!"
+
+
+
+
 DB_NAME = "car_rental.db"
 
 
