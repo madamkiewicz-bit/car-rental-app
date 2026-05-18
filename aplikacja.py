@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request
 from datetime import datetime, date, timedelta
 import sqlite3
-
+# render test
 app = Flask(__name__)
 DB_NAME = "car_rental.db"
 
