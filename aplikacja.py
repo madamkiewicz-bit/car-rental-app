@@ -299,7 +299,7 @@ def block_has_conflict(conn, car_id, date_from, date_to, ignored_block_id=None):
 
 
 @app.route("/", methods=["GET", "POST"])
-@app.route("/test", methods=["GET", "POST"])
+
 def home():
     message = ""
     edit_reservation = None
