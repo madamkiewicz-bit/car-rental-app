@@ -1,13 +1,8 @@
 from flask import Flask, render_template, request
 from datetime import datetime, date, timedelta
 import sqlite3
-# render test
+
 app = Flask(__name__)
-
-
-
-
-
 DB_NAME = "car_rental.db"
 
 
@@ -299,7 +294,6 @@ def block_has_conflict(conn, car_id, date_from, date_to, ignored_block_id=None):
 
 
 @app.route("/", methods=["GET", "POST"])
-
 def home():
     message = ""
     edit_reservation = None

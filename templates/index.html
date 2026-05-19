@@ -341,7 +341,7 @@ summary{
 🚘 Zarządzaj samochodami
 </h2>
 
-<div id="cars-admin">
+<div id="cars-admin" class="hidden">
 
 {% if edit_car %}
 
@@ -466,7 +466,7 @@ Dodaj samochód
 
 <button class="btn-orange">
 Edytuj
-</button
+</button>
 
 </form>
 
@@ -551,7 +551,6 @@ Zapisz zmiany
 
 <input type="hidden" name="form_type" value="add_reservation">
 
-
 <div class="form-grid">
 
 <div class="form-field">
@@ -609,10 +608,9 @@ Zapisz zmiany
 
 <br>
 
-<button type="submit" class="btn-green">
-    Dodaj rezerwację
+<button class="btn-green">
+Dodaj rezerwację
 </button>
-
 
 </form>
 
@@ -748,7 +746,6 @@ blokada
 </h2>
 
 <form method="POST">
-    <p style="color:red;">FORM START</p>
 
 <input type="hidden" name="form_type" value="update_block">
 <input type="hidden" name="block_id" value="{{ edit_block.id }}">
