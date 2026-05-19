@@ -464,7 +464,7 @@ def home():
             date_from = request.form.get("date_from", "").strip()
             date_to = request.form.get("date_to", "").strip()
 
-            if not car_id or not client or not date_from or not date_to:
+            if not reservation_id or not car_id or not client or not date_from or not date_to:
                 message = "❌ Uzupełnij auto, klienta oraz daty"
             else:
                 if not daily_rate_text:
